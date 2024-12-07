@@ -1,4 +1,3 @@
-from picamera2 import Picamera2
 from datetime import datetime, timedelta
 import os
 import shutil
@@ -6,6 +5,7 @@ from ftplib import FTP
 import logging
 import schedule
 import time
+from libcamera import controls, CameraManager
 
 # Constants
 FTP_HOST = "66.220.9.50"
@@ -64,13 +64,23 @@ def capture_image():
     file_name = os.path.join(folder_path, f"image_{timestamp}.jpg")
     
     try:
-        camera = Picamera2()
-        config = camera.create_still_configuration()
+        camera_manager = CameraManager()
+        camera = camera_manager.get_camera(0)
+        camera.acquire()
+        
+        config = camera.generate_configuration()
+        config['main'].size = (1920, 1080)
+        config['main'].format = 'JPEG'
+        config['main'].controls = {
+            controls.JpegQuality: 99
+        }
         camera.configure(config)
         camera.start()
-        time.sleep(2)  # Allow the camera to stabilize
-        camera.capture_file(file_name)
-        camera.close()
+        request = camera.create_request()
+        request.save(file_name)
+        camera.stop()
+        camera.release()
+        
         logging.info(f"Captured image: {file_name}")
     except Exception as e:
         logging.error(f"Failed to capture image: {e}")
