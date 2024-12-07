@@ -3,6 +3,8 @@ README for Timelapse Automation with Raspberry Pi
 Created by Marcus Hazel-McGown - MM0ZIF https://mm0zif.radio
 this project is beerware, if you like it donate a beer!
 
+--Updated to Libcamera--
+
 Overview
 This project is a Python-based timelapse automation tool designed for Raspberry Pi, using the PiCamera and FTP for remote storage. The script captures images at regular intervals, organizes them into daily folders, and uploads the previous day's images as a compressed ZIP file to a remote FTP server.
 
