@@ -3,15 +3,14 @@ import os
 import shutil
 from ftplib import FTP
 import logging
-import schedule
 import time
-from libcamera import controls, CameraManager
+from picamera2 import Picamera2
 
 # Constants
-FTP_HOST = "66.220.9.50"
-FTP_USER = "daLich"
-FTP_PASS = "Type0Neg1024!"
-BASE_FOLDER = "/home/marcus/pi/timelapse"
+FTP_HOST = "IP-of-ftp"
+FTP_USER = "Username"
+FTP_PASS = "Password"
+BASE_FOLDER = "/home/username/pi/timelapse"
 
 # Configure logging
 logging.basicConfig(
@@ -64,40 +63,35 @@ def capture_image():
     file_name = os.path.join(folder_path, f"image_{timestamp}.jpg")
     
     try:
-        camera_manager = CameraManager()
-        camera = camera_manager.get_camera(0)
-        camera.acquire()
-        
-        config = camera.generate_configuration()
-        config['main'].size = (1920, 1080)
-        config['main'].format = 'JPEG'
-        config['main'].controls = {
-            controls.JpegQuality: 99
-        }
-        camera.configure(config)
-        camera.start()
-        request = camera.create_request()
-        request.save(file_name)
-        camera.stop()
-        camera.release()
-        
-        logging.info(f"Captured image: {file_name}")
+        logging.info("Initializing Picamera2")
+        picam2 = Picamera2()
+        config = picam2.create_still_configuration(main={"size": (1920, 1080)})
+        logging.info("Configuring camera")
+        picam2.configure(config)
+        logging.info("Starting camera")
+        picam2.start()
+        time.sleep(2)  # Give the camera time to initialize
+        logging.info(f"Capturing image to {file_name}")
+        picam2.capture_file(file_name)
+        picam2.stop()
+        logging.info(f"Image captured successfully: {file_name}")
     except Exception as e:
         logging.error(f"Failed to capture image: {e}")
-
-def schedule_tasks():
-    """Schedules tasks for midnight processing."""
-    schedule.every().day.at("00:00").do(zip_and_upload_previous_day)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)  # Sleep to reduce CPU usage
+    finally:
+        picam2.close()  # Ensure the camera is properly closed
 
 if __name__ == "__main__":
-    # Start capturing images in a separate loop
     try:
         while True:
-            capture_image()
-            time.sleep(300)  # Wait 5 minutes between captures
+            start_time = time.time()  # Record the start time
+            capture_image()           # Capture the image
+            elapsed_time = time.time() - start_time
+            logging.info(f"Capture completed in {elapsed_time:.2f} seconds")
+            
+            # Calculate remaining time to maintain a 5-minute interval
+            sleep_time = max(0, 300 - elapsed_time)
+            logging.info(f"Sleeping for {sleep_time:.2f} seconds")
+            time.sleep(sleep_time)
     except KeyboardInterrupt:
         logging.info("Program terminated by user.")
     except Exception as e:
